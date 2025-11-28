@@ -1,0 +1,23 @@
+{
+  "name": "DermAid - Skin Health Platform",
+  "short_name": "DermAid",
+  "description": "AI-powered dual-agent skin health platform for all skin tones",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#FB923C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
