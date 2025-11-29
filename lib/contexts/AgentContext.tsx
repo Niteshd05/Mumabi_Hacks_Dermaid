@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { AgentType, CosmeticScanResult, MedicalScanResult } from '@/lib/types';
 
 interface AgentContextType {
@@ -45,9 +45,57 @@ const MEDICAL_THEME = {
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
 
 export function AgentProvider({ children }: { children: ReactNode }) {
-  const [activeAgent, setActiveAgentState] = useState<AgentType>('cosmetic');
-  const [lastCosmeticScan, setLastCosmeticScan] = useState<CosmeticScanResult | null>(null);
-  const [lastMedicalScan, setLastMedicalScan] = useState<MedicalScanResult | null>(null);
+  // Initialize from localStorage if available
+  const [activeAgent, setActiveAgentState] = useState<AgentType>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('activeAgent');
+      return (saved === 'cosmetic' || saved === 'medical') ? saved : 'cosmetic';
+    }
+    return 'cosmetic';
+  });
+  const [lastCosmeticScan, setLastCosmeticScanState] = useState<CosmeticScanResult | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('lastCosmeticScan');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+  const [lastMedicalScan, setLastMedicalScanState] = useState<MedicalScanResult | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('lastMedicalScan');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+
+  const setLastCosmeticScan = useCallback((result: CosmeticScanResult | null) => {
+    setLastCosmeticScanState(result);
+    if (typeof window !== 'undefined') {
+      if (result) {
+        sessionStorage.setItem('lastCosmeticScan', JSON.stringify(result));
+      } else {
+        sessionStorage.removeItem('lastCosmeticScan');
+      }
+    }
+  }, []);
+
+  const setLastMedicalScan = useCallback((result: MedicalScanResult | null) => {
+    setLastMedicalScanState(result);
+    if (typeof window !== 'undefined') {
+      if (result) {
+        sessionStorage.setItem('lastMedicalScan', JSON.stringify(result));
+      } else {
+        sessionStorage.removeItem('lastMedicalScan');
+      }
+    }
+  }, []);
+
+  // Persist active agent to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activeAgent', activeAgent);
+    }
+  }, [activeAgent]);
 
   const setActiveAgent = useCallback((agent: AgentType) => {
     setActiveAgentState(agent);

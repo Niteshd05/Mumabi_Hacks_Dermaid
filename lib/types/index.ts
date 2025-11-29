@@ -8,6 +8,14 @@ export type FitzpatrickScale = 1 | 2 | 3 | 4 | 5 | 6;
 export type SkinConcern = 'acne' | 'anti-aging' | 'dark-spots' | 'health-monitoring' | 'hydration';
 export type AgentType = 'cosmetic' | 'medical';
 
+export interface UserConsent {
+  termsAccepted: boolean;
+  dataProcessing: boolean;
+  medicalDisclaimer: boolean;
+  acceptedAt: Date;
+  version: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -18,6 +26,17 @@ export interface UserProfile {
   concerns: SkinConcern[];
   onboardingComplete: boolean;
   createdAt: Date;
+  consent?: UserConsent;
+  // Health factors that affect skin
+  allergies?: string[]; // e.g., ['fragrance', 'parabens', 'sulfates']
+  diseases?: string[]; // e.g., ['thyroid', 'diabetes', 'pcos']
+  hormonalFactors?: {
+    isPregnant?: boolean;
+    isMenopausal?: boolean;
+    hasHormonalImbalance?: boolean;
+    takingHormonalMedication?: boolean;
+    menstrualCycleAffects?: boolean;
+  };
 }
 
 // Weather/Environment Types
@@ -47,19 +66,63 @@ export type CosmeticCondition =
   | 'inflammatory_acne'
   | 'pih'; // Post-Inflammatory Hyperpigmentation
 
+export interface BoundingBox {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export interface CosmeticDetection {
+  classId: number;
+  confidence: number;
+  box: BoundingBox;
+  label?: string;
+}
+
 export interface CosmeticScanResult {
   detected_conditions: CosmeticCondition[];
   severity_score: number; // 0-1
   confidence: number; // 0-1
+  /**
+   * Optional raw detections returned by the model (per label key),
+   * used for zone mapping and severity by count.
+   */
+  rawDetections?: Record<string, CosmeticDetection[]>;
+  /**
+   * Optional total count of detections across labels.
+   */
+  totalDetections?: number;
 }
 
 export type MedicalCondition = 
-  | 'atopic_dermatitis' 
+  // High Risk - Immediate Doctor Referral
+  | 'skin_cancer' | 'melanoma' | 'bcc' | 'scc'
+  | 'actinic_keratosis'
+  | 'lupus'
+  | 'vasculitis'
+  | 'bullous'
+  | 'drug_eruption'
+  // Medium Risk - Schedule Appointment
   | 'psoriasis' 
+  | 'vitiligo'
+  | 'lichen'
+  | 'moles' | 'nevus'
+  | 'vascular_tumors'
+  | 'sun_damage'
+  | 'benign_tumors'
+  // Low Risk - Self-Care/OTC
+  | 'acne'
+  | 'rosacea'
+  | 'eczema' | 'atopic_dermatitis'
+  | 'tinea' | 'ringworm'
+  | 'candidiasis'
+  | 'warts'
+  | 'seborrheic_keratosis'
+  | 'infestations' | 'bites'
   | 'fungal_infection' 
   | 'hives'
-  | 'potential_melanoma'
-  | 'eczema';
+  | 'normal'; // No medical condition detected
 
 export type RiskFlag = 'low' | 'medium' | 'high';
 

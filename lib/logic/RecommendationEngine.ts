@@ -338,6 +338,18 @@ export function generateMedicalRecommendations(
 
   const recommendations: Recommendation[] = [];
 
+  // Normal/healthy skin - no medical recommendations needed
+  if (scanResult.condition_match === 'normal') {
+    recommendations.push({
+      id: 'medical-normal',
+      type: 'action',
+      title: 'Maintain Healthy Skin',
+      description: 'Your skin appears healthy! Continue with your regular skincare routine and maintain good sun protection habits.',
+      priority: 'low',
+    });
+    return recommendations;
+  }
+
   // High Risk - Immediate attention
   if (scanResult.risk_flag === 'high') {
     recommendations.push({

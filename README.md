@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/building-and-running/learn-nextjs).
 
 ## Getting Started
 
@@ -14,23 +14,43 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` with your browser to see the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the project by modifying files under `app/` and `lib/`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load fonts.
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The easiest way to deploy this app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=nextjs-repo).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Environment & Integrations
+
+Create a `.env.local` file with:
+
+```bash
+# Required for Gemini 2.0 Flash agentic planning
+GOOGLE_API_KEY=your_google_generative_ai_key_here
+
+# Local dev base URL (optional)
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# Amazon SearchAPI key (for product links)
+SEARCHAPI_KEY=your_searchapi_key_here
+```
+
+**Weather/UV**
+
+- Uses [Open‑Meteo](https://open-meteo.com/) (no API key required). No extra setup needed.
+
+**Face Age (optional)**
+
+- We use [`@vladmandic/face-api`](https://github.com/vladmandic/face-api) for age estimation during cosmetic scans.
+- At runtime the app tries to load models from `/public/models` and falls back to a CDN.
+- To bundle models locally (recommended for offline): copy all files from `node_modules/@vladmandic/face-api/model/` into `public/models/` so that files like `public/models/tiny_face_detector_model-weights_manifest.json` and `public/models/age_gender_model-weights_manifest.json` exist.
+
+**Product Links via SearchAPI (optional)**
+
+- The dashboard calls `/api/links` which proxies to `https://www.searchapi.io` to fetch Amazon product URLs based on recommended ingredients.
+- Set `SEARCHAPI_KEY` in `.env.local` to enable this feature.
+

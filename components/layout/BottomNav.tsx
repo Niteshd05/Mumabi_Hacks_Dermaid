@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Home, ScanFace, User } from 'lucide-react';
+import { Home, ScanFace, User, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgent } from '@/lib/contexts';
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/scan', label: 'Scan', icon: ScanFace },
+  { href: '/find-dermatologist', label: 'Find Derm', icon: MapPin },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 

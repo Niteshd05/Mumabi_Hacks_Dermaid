@@ -15,7 +15,8 @@ export type ActionIntent =
   | 'set_reminder'
   | 'open_profile'
   | 'view_education'
-  | 'dismiss';
+  | 'dismiss'
+  | 'answer_question'; // New intent for answering agent questions
 
 export interface AgentAction {
   id: string;
@@ -38,6 +39,13 @@ export interface AgentResponseMeta {
   confidence?: number;
   timestamp?: Date;
   triggeredBy?: 'scan' | 'environment' | 'onboarding' | 'manual' | 'time_travel';
+  
+  // Medical Agent Extras
+  riskLevel?: 'high' | 'medium' | 'low';
+  requiresDermatologist?: boolean;
+  urgency?: 'critical' | 'high' | 'medium' | 'low';
+  tips?: string[];
+  products?: Array<{ product_id: string; product_name: string }>;
 }
 
 export interface AgentResponse {
@@ -50,6 +58,12 @@ export interface AgentResponse {
   actions?: AgentAction[];
   routineDiff?: RoutineDiff;
   meta?: AgentResponseMeta;
+
+  // Agentic Interactivity
+  type?: 'text' | 'question' | 'thought'; // Default is text
+  options?: string[]; // For question type
+  thoughtProcess?: string[]; // Thinking steps to visualize
+  questionId?: string; // ID to link answer back to context
 }
 
 export interface AgentMessage extends AgentResponse {
@@ -58,40 +72,26 @@ export interface AgentMessage extends AgentResponse {
   pinned?: boolean;
 }
 
-// Preset agent personas for character/avatar
-export interface AgentCharacter {
-  name: string;
-  role: string;
-  avatar: string; // emoji or path
-  color: string;
-  accentColor: string;
-  greeting: string;
-}
-
-export const AGENT_CHARACTERS: Record<AgentPersona, AgentCharacter> = {
+export const AGENT_CHARACTERS = {
   cosmetic: {
     name: 'Glow',
-    role: 'Your Cosmetic Care Companion',
+    role: 'Cosmetic Specialist',
+    color: 'text-orange-500',
+    bg: 'bg-orange-500/10',
     avatar: '✨',
-    color: '#FB923C',
-    accentColor: '#F97316',
-    greeting: "Hey there! Let's make your skin glow ✨",
   },
   medical: {
-    name: 'Doc',
-    role: 'Your Health Monitoring Assistant',
+    name: 'Medi',
+    role: 'Medical Assistant',
+    color: 'text-teal-500',
+    bg: 'bg-teal-500/10',
     avatar: '🩺',
-    color: '#5EEAD4',
-    accentColor: '#2DD4BF',
-    greeting: "Hello! I'm here to help monitor your skin health.",
   },
   neutral: {
     name: 'DermAid',
-    role: 'Your Skin Health Guide',
-    avatar: '🌟',
-    color: '#94A3B8',
-    accentColor: '#64748B',
-    greeting: "Welcome! Let's take care of your skin together.",
+    role: 'Assistant',
+    color: 'text-blue-500',
+    bg: 'bg-blue-500/10',
+    avatar: '🤖',
   },
 };
-

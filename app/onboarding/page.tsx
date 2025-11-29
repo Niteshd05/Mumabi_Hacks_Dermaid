@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ArrowLeft, User, Calendar, Sparkles } from 'lucide-react';
+import { ArrowRight, ArrowLeft, User, Calendar, Sparkles, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MobileContainer, TopBar } from '@/components/layout';
@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
-type Step = 'welcome' | 'basic' | 'skin-tone' | 'skin-type' | 'concerns' | 'complete';
+type Step = 'welcome' | 'basic' | 'skin-tone' | 'skin-type' | 'concerns' | 'health-factors' | 'consent' | 'complete';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -33,6 +33,18 @@ export default function OnboardingPage() {
     fitzpatrickScale: null as FitzpatrickScale | null,
     skinType: null as SkinType | null,
     concerns: [] as SkinConcern[],
+    allergies: [] as string[],
+    diseases: [] as string[],
+    hormonalFactors: {
+      isPregnant: false,
+      isMenopausal: false,
+      hasHormonalImbalance: false,
+      takingHormonalMedication: false,
+      menstrualCycleAffects: false,
+    },
+    consentTerms: false,
+    consentData: false,
+    consentMedical: false,
   });
 
   // Redirect if already onboarded
@@ -118,7 +130,7 @@ export default function OnboardingPage() {
     );
   }
 
-  const steps: Step[] = ['welcome', 'basic', 'skin-tone', 'skin-type', 'concerns', 'complete'];
+  const steps: Step[] = ['welcome', 'basic', 'skin-tone', 'skin-type', 'concerns', 'health-factors', 'consent', 'complete'];
   const currentStepIndex = steps.indexOf(currentStep);
 
   const handleNext = () => {
@@ -157,9 +169,16 @@ export default function OnboardingPage() {
         concerns: formData.concerns,
         onboardingComplete: true,
         createdAt: new Date(),
-      };
+        consent: {
+          termsAccepted: formData.consentTerms,
+          dataProcessing: formData.consentData,
+          medicalDisclaimer: formData.consentMedical,
+          acceptedAt: new Date(),
+          version: 'v1',
+        },
+      } as const;
 
-      await setUser(userProfile);
+      await setUser(userProfile as any);
       await completeOnboarding();
       
       router.push('/dashboard');
@@ -169,7 +188,7 @@ export default function OnboardingPage() {
         setTyping(true);
         setTimeout(() => {
           setTyping(false);
-          const welcomeMessage = AgentAdapter.fromOnboardingComplete(userProfile);
+          const welcomeMessage = AgentAdapter.fromOnboardingComplete(userProfile as any);
           pushMessage(welcomeMessage);
           openDrawer();
         }, 1000);
@@ -190,6 +209,10 @@ export default function OnboardingPage() {
         return formData.skinType !== null;
       case 'concerns':
         return formData.concerns.length > 0;
+      case 'health-factors':
+        return true; // Optional step, always can proceed
+      case 'consent':
+        return formData.consentTerms && formData.consentData && formData.consentMedical;
       default:
         return true;
     }
@@ -353,6 +376,162 @@ export default function OnboardingPage() {
             </motion.div>
           )}
 
+          {/* Health Factors Step */}
+          {currentStep === 'health-factors' && (
+            <motion.div
+              key="health-factors"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Health Factors</h2>
+                <p className="text-muted-foreground text-sm">
+                  These factors can affect your skin. Sharing this helps us provide safer, more personalized recommendations.
+                </p>
+              </div>
+
+              {/* Allergies */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Allergies (optional)</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['fragrance', 'parabens', 'sulfates', 'alcohol', 'retinoids', 'salicylic acid', 'benzoyl peroxide'].map((allergy) => (
+                    <button
+                      key={allergy}
+                      type="button"
+                      onClick={() => {
+                        const allergies = formData.allergies.includes(allergy)
+                          ? formData.allergies.filter(a => a !== allergy)
+                          : [...formData.allergies, allergy];
+                        setFormData({ ...formData, allergies });
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                        formData.allergies.includes(allergy)
+                          ? "bg-orange-100 border-orange-500 text-orange-700"
+                          : "bg-background border-border hover:bg-muted"
+                      )}
+                    >
+                      {allergy}
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  placeholder="Add other allergies (comma separated)"
+                  value={formData.allergies.filter(a => !['fragrance', 'parabens', 'sulfates', 'alcohol', 'retinoids', 'salicylic acid', 'benzoyl peroxide'].includes(a)).join(', ')}
+                  onChange={(e) => {
+                    const otherAllergies = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                    const commonAllergies = formData.allergies.filter(a => ['fragrance', 'parabens', 'sulfates', 'alcohol', 'retinoids', 'salicylic acid', 'benzoyl peroxide'].includes(a));
+                    setFormData({ ...formData, allergies: [...commonAllergies, ...otherAllergies] });
+                  }}
+                  className="text-sm"
+                />
+              </div>
+
+              {/* Diseases */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Medical Conditions (optional)</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['thyroid', 'diabetes', 'pcos', 'autoimmune', 'eczema', 'psoriasis'].map((disease) => (
+                    <button
+                      key={disease}
+                      type="button"
+                      onClick={() => {
+                        const diseases = formData.diseases.includes(disease)
+                          ? formData.diseases.filter(d => d !== disease)
+                          : [...formData.diseases, disease];
+                        setFormData({ ...formData, diseases });
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                        formData.diseases.includes(disease)
+                          ? "bg-orange-100 border-orange-500 text-orange-700"
+                          : "bg-background border-border hover:bg-muted"
+                      )}
+                    >
+                      {disease}
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  placeholder="Add other conditions (comma separated)"
+                  value={formData.diseases.filter(d => !['thyroid', 'diabetes', 'pcos', 'autoimmune', 'eczema', 'psoriasis'].includes(d)).join(', ')}
+                  onChange={(e) => {
+                    const otherDiseases = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                    const commonDiseases = formData.diseases.filter(d => ['thyroid', 'diabetes', 'pcos', 'autoimmune', 'eczema', 'psoriasis'].includes(d));
+                    setFormData({ ...formData, diseases: [...commonDiseases, ...otherDiseases] });
+                  }}
+                  className="text-sm"
+                />
+              </div>
+
+              {/* Hormonal Factors */}
+              <div>
+                <label className="text-sm font-medium mb-3 block">Hormonal Factors (optional)</label>
+                <div className="space-y-3">
+                  {[
+                    { key: 'isPregnant', label: 'Currently pregnant' },
+                    { key: 'isMenopausal', label: 'Menopausal' },
+                    { key: 'hasHormonalImbalance', label: 'Hormonal imbalance' },
+                    { key: 'takingHormonalMedication', label: 'Taking hormonal medication' },
+                    { key: 'menstrualCycleAffects', label: 'Menstrual cycle affects my skin' },
+                  ].map(({ key, label }) => (
+                    <label key={key} className="flex items-center gap-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={formData.hormonalFactors[key as keyof typeof formData.hormonalFactors] as boolean}
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            hormonalFactors: {
+                              ...formData.hormonalFactors,
+                              [key]: e.target.checked,
+                            },
+                          });
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-4">
+                This information helps us avoid recommending products that may interact with your health conditions or medications.
+              </p>
+            </motion.div>
+          )}
+
+          {/* Consent Step */}
+          {currentStep === 'consent' && (
+            <motion.div
+              key="consent"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-5"
+            >
+              <div>
+                <h2 className="text-2xl font-bold mb-2 flex items-center gap-2"><ShieldCheck className="w-5 h-5"/>Consent & Disclaimers</h2>
+                <p className="text-muted-foreground text-sm">We value your privacy and safety. Please review and accept to continue.</p>
+              </div>
+              <label className="flex items-start gap-3 text-sm">
+                <input type="checkbox" className="mt-1" checked={formData.consentTerms} onChange={(e)=>setFormData({...formData, consentTerms: e.target.checked})}/>
+                <span>I agree to the <a href="/terms" className="underline">Terms & Conditions</a> and Privacy Policy.</span>
+              </label>
+              <label className="flex items-start gap-3 text-sm">
+                <input type="checkbox" className="mt-1" checked={formData.consentData} onChange={(e)=>setFormData({...formData, consentData: e.target.checked})}/>
+                <span>I consent to data processing for personalized recommendations, including use of camera scans.</span>
+              </label>
+              <label className="flex items-start gap-3 text-sm">
+                <input type="checkbox" className="mt-1" checked={formData.consentMedical} onChange={(e)=>setFormData({...formData, consentMedical: e.target.checked})}/>
+                <span>I acknowledge DermAid does not provide a medical diagnosis and is for informational support only.</span>
+              </label>
+            </motion.div>
+          )}
+
           {/* Complete Step */}
           {currentStep === 'complete' && (
             <motion.div
@@ -411,7 +590,7 @@ export default function OnboardingPage() {
               disabled={!canProceed() || isSubmitting}
               className="bg-gradient-to-r from-orange-400 to-amber-500 text-white"
             >
-              {currentStepIndex === steps.length - 2 ? 'Review' : 'Next'}
+              {currentStep === 'consent' ? 'Review' : currentStepIndex === steps.length - 2 ? 'Review' : 'Next'}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>

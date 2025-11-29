@@ -15,6 +15,7 @@ import { UserProfile } from '@/lib/types';
 
 const USERS_COLLECTION = 'users';
 const SCANS_COLLECTION = 'scans';
+const RECOMMENDATIONS_COLLECTION = 'recommendations';
 
 /**
  * Get user profile from Firestore
@@ -106,6 +107,32 @@ export async function getUserScans(userId: string): Promise<any[]> {
     return [];
   } catch (error) {
     console.error('Error getting user scans:', error);
+    throw error;
+  }
+}
+
+/**
+ * Save final recommendations/log to Firestore
+ */
+export async function saveRecommendationLog(
+  userId: string,
+  data: {
+    agentType: 'cosmetic' | 'medical';
+    recommendations: any;
+    scanResult?: any;
+    notes?: string[];
+    timestamp?: Date;
+  }
+): Promise<void> {
+  try {
+    const recsRef = collection(db, USERS_COLLECTION, userId, RECOMMENDATIONS_COLLECTION);
+    await setDoc(doc(recsRef), {
+      ...data,
+      timestamp: data.timestamp || new Date(),
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Error saving recommendation log:', error);
     throw error;
   }
 }

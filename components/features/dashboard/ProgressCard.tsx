@@ -7,21 +7,27 @@ import { Badge } from '@/components/ui/badge';
 import { useSimulation } from '@/lib/contexts';
 import { cn } from '@/lib/utils';
 
-export function ProgressCard() {
+interface ProgressCardProps {
+  skinScore?: number;
+}
+
+export function ProgressCard({ skinScore }: ProgressCardProps = {}) {
   const { simulation, getCurrentProgress } = useSimulation();
   const progress = getCurrentProgress();
 
-  if (!progress) return null;
+  const effectiveScore = typeof skinScore === 'number'
+    ? Math.max(0, Math.min(100, Math.round(skinScore)))
+    : 100; // Fallback to 100 when no score is available
 
-  const scoreColor = progress.skinScore >= 70 
+  const scoreColor = effectiveScore >= 70 
     ? 'text-emerald-500' 
-    : progress.skinScore >= 50 
+    : effectiveScore >= 50 
       ? 'text-amber-500' 
       : 'text-red-500';
 
-  const scoreBg = progress.skinScore >= 70 
+  const scoreBg = effectiveScore >= 70 
     ? 'from-emerald-500 to-teal-500' 
-    : progress.skinScore >= 50 
+    : effectiveScore >= 50 
       ? 'from-amber-500 to-orange-500' 
       : 'from-red-500 to-rose-500';
 
@@ -49,19 +55,19 @@ export function ProgressCard() {
               'bg-gradient-to-br text-white font-bold text-xl',
               scoreBg
             )}
-            key={progress.skinScore}
+            key={effectiveScore}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 300 }}
           >
-            {progress.skinScore}
+            {effectiveScore}
           </motion.div>
           <div>
             <p className="text-sm font-medium">Skin Health Score</p>
             <p className="text-xs text-muted-foreground">
-              {progress.skinScore >= 70 
+              {effectiveScore >= 70 
                 ? 'Great progress!' 
-                : progress.skinScore >= 50 
+                : effectiveScore >= 50 
                   ? 'Improving steadily' 
                   : 'Building foundation'}
             </p>
@@ -69,7 +75,7 @@ export function ProgressCard() {
         </div>
 
         {/* Improvements */}
-        {progress.improvements.length > 0 && (
+        {typeof skinScore !== 'number' && progress && progress.improvements.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1">
               <TrendingUp className="w-3 h-3" />
@@ -92,32 +98,9 @@ export function ProgressCard() {
           </div>
         )}
 
-        {/* Concerns */}
-        {progress.concerns.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" />
-              Current Concerns
-            </h4>
-            <div className="space-y-1">
-              {progress.concerns.map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex items-center gap-2 text-xs text-muted-foreground"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                  {item}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Triggers Identified */}
-        {progress.triggersIdentified.length > 0 && (
+        {typeof skinScore !== 'number' && progress && progress.triggersIdentified.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-2">
               Triggers Identified

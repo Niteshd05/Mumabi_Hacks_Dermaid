@@ -1,195 +1,84 @@
-/**
- * Agent Adapter
- * Converts RecommendationEngine outputs and scan results into AgentResponse format
- */
-
-import {
-  AgentResponse,
-  AgentAction,
-  AgentPersona,
-  AgentTone,
-  RoutineDiff,
-} from '@/lib/types/agent';
-import {
-  DailyRoutine,
-  CosmeticScanResult,
-  MedicalScanResult,
-  WeatherState,
-  UserProfile,
-  EnvironmentalAlert,
-  Recommendation,
-} from '@/lib/types';
+import { CosmeticScanResult, MedicalScanResult, WeatherState, UserProfile } from '@/lib/types';
+import { AgentResponse, AgentPersona, AgentAction } from '@/lib/types/agent';
 import { RecommendationEngine } from './RecommendationEngine';
 
 /**
- * Generate friendly cosmetic message based on scan results
- */
-function generateCosmeticMessage(
-  scan: CosmeticScanResult,
-  user: UserProfile,
-  weather: WeatherState
-): string {
-  const { detected_conditions, severity_score } = scan;
-  const hasAcne = detected_conditions.some(c => 
-    ['acne_vulgaris', 'inflammatory_acne'].includes(c)
-  );
-  const hasPIH = detected_conditions.includes('pih') || detected_conditions.includes('hyperpigmentation');
-  const isDarkSkin = user.fitzpatrickScale >= 4;
-
-  if (severity_score < 0.3) {
-    return "Your skin is looking great! Let's maintain this healthy glow with your current routine. ✨";
-  }
-
-  if (hasAcne && hasPIH && isDarkSkin) {
-    return "I noticed some active breakouts and dark spots. Good news: I've adapted your routine with melanin-safe treatments that tackle both concerns without causing more hyperpigmentation.";
-  }
-
-  if (hasAcne) {
-    if (weather.isHighUV) {
-      return "I see some active acne, but the UV index is high today! I've adjusted your routine to protect your skin from sun damage while treating breakouts in the evening.";
-    }
-    return "I've detected some breakouts. Let's treat them gently with products that won't irritate your skin barrier.";
-  }
-
-  if (hasPIH) {
-    return "I can see some dark spots from past breakouts. I've included brightening treatments that are safe for your skin tone to help fade them over time.";
-  }
-
-  return "I've analyzed your skin and personalized your routine based on what I see. Let's work together to improve your skin health!";
-}
-
-/**
- * Generate clinical medical message based on scan results
+ * Generate basic medical message
  */
 function generateMedicalMessage(scan: MedicalScanResult): string {
-  const { condition_match, risk_flag } = scan;
-
-  if (risk_flag === 'high') {
-    return "⚠️ I've detected visual markers that require immediate professional attention. Please consult a dermatologist as soon as possible. Your health is our priority.";
+  if (scan.risk_flag === 'high') {
+    return `I've detected signs of ${scan.condition_match.replace(/_/g, ' ')}. This requires professional evaluation.`;
   }
-
-  const conditionName = condition_match.replace(/_/g, ' ');
-
-  if (risk_flag === 'medium') {
-    return `I've identified patterns consistent with ${conditionName}. While this appears manageable, I recommend scheduling a non-urgent appointment with a dermatologist to confirm and get appropriate treatment.`;
+  if (scan.risk_flag === 'medium') {
+    return `I see potential signs of ${scan.condition_match.replace(/_/g, ' ')}. It's best to get this checked by a dermatologist.`;
   }
-
-  return `This looks like ${conditionName}, which appears to be mild. I've prepared some care recommendations to help manage it. Let's monitor this together and track any changes.`;
+  if (scan.condition_match === 'normal') {
+    return "Your skin looks healthy! No medical concerns detected.";
+  }
+  return `I've detected ${scan.condition_match.replace(/_/g, ' ')}. Let's see how we can manage this.`;
 }
 
 /**
- * Compare routines to detect changes
- */
-function detectRoutineDiff(
-  previousRoutine: DailyRoutine | null,
-  newRoutine: DailyRoutine
-): RoutineDiff | undefined {
-  if (!previousRoutine) return undefined;
-
-  const allPrevious = [...previousRoutine.morning, ...previousRoutine.evening];
-  const allNew = [...newRoutine.morning, ...newRoutine.evening];
-
-  const blocked = allNew.filter(r => r.isBlocked);
-  const added = allNew.filter(r => 
-    !r.isBlocked && !allPrevious.some(p => p.id === r.id)
-  );
-  const removed = allPrevious.filter(p => 
-    !allNew.some(n => n.id === p.id)
-  );
-
-  if (blocked.length === 0 && added.length === 0 && removed.length === 0) {
-    return undefined;
-  }
-
-  return {
-    added,
-    removed,
-    blocked,
-    modified: [],
-  };
-}
-
-/**
- * Convert cosmetic scan to AgentResponse
- */
-export function fromCosmeticScan(
-  scan: CosmeticScanResult,
-  user: UserProfile,
-  weather: WeatherState,
-  previousRoutine?: DailyRoutine | null
-): AgentResponse {
-  const newRoutine = RecommendationEngine.generateCosmeticRoutine(scan, weather, user);
-  const alerts = RecommendationEngine.generateEnvironmentalAlerts(weather);
-  const routineDiff = detectRoutineDiff(previousRoutine || null, newRoutine);
-
-  const highlights: string[] = [];
-  
-  if (scan.detected_conditions.includes('pih') && user.fitzpatrickScale >= 4) {
-    highlights.push('Using melanin-safe treatments to prevent further dark spots');
-  }
-  
-  if (weather.isHighUV) {
-    highlights.push('Adjusted routine for high UV protection');
-  }
-
-  if (weather.isDryWeather) {
-    highlights.push('Added extra hydration for dry weather conditions');
-  }
-
-  const actions: AgentAction[] = [
-    {
-      id: 'view-routine',
-      label: 'View Full Routine',
-      intent: 'apply_routine',
-      variant: 'default',
-    },
-  ];
-
-  if (scan.severity_score > 0.5) {
-    actions.push({
-      id: 'set-reminder',
-      label: 'Check Again in 1 Week',
-      intent: 'set_reminder',
-      variant: 'outline',
-      payload: { days: 7 },
-    });
-  }
-
-  return {
-    id: `cosmetic-${Date.now()}`,
-    agentType: 'cosmetic',
-    tone: 'friendly',
-    message: generateCosmeticMessage(scan, user, weather),
-    highlights: highlights.length > 0 ? highlights : undefined,
-    alerts: alerts.length > 0 ? alerts : undefined,
-    actions,
-    routineDiff,
-    meta: {
-      severity: scan.severity_score > 0.7 ? 'warning' : 'info',
-      confidence: scan.confidence,
-      timestamp: new Date(),
-      triggeredBy: 'scan',
-    },
-  };
-}
-
-/**
- * Convert medical scan to AgentResponse
+ * Convert medical scan to AgentResponse with risk-based routing
  */
 export function fromMedicalScan(
   scan: MedicalScanResult,
+  user: UserProfile,
   weather: WeatherState
 ): AgentResponse {
-  const recommendations = RecommendationEngine.generateMedicalRecommendations(scan, weather);
+  const baseMessage = generateMedicalMessage(scan);
+
+  // Fire-and-forget server execution for medical agent via API
+  (async () => {
+    try {
+      const res = await fetch('/api/agents/medical', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          scan,
+          userProfile: user,
+          weather,
+          history: [], // Initial turn, no history
+        }),
+      });
+
+      if (res.ok) {
+        const out = await res.json(); // MedicalAgentOutput
+        
+        // Store the agent's response (Text, Question, or Final)
+        const { saveAgentMessage } = await import('@/lib/firebase/agent');
+        
+        await saveAgentMessage(user.id, {
+          agentType: 'medical',
+          tone: 'clinical',
+          message: out.message,
+          type: out.type || 'text', // 'question' or 'text'
+          options: out.options, // Choices for question
+          thoughtProcess: out.thoughtProcess, // Visual thinking steps
+          meta: {
+            severity: out.urgency === 'critical' ? 'danger' : out.urgency === 'high' ? 'warning' : 'info',
+            timestamp: new Date(),
+            triggeredBy: 'scan',
+            riskLevel: out.riskLevel,
+            requiresDermatologist: out.requiresDermatologist,
+            urgency: out.urgency,
+            tips: out.tips,
+            products: out.products,
+          },
+        } as any);
+      }
+    } catch (err) {
+      console.error('Medical agent error:', err);
+    }
+  })();
 
   const highlights: string[] = [];
-  
   if (scan.visual_markers.length > 0) {
     highlights.push(`Visual markers: ${scan.visual_markers.join(', ')}`);
   }
 
   const actions: AgentAction[] = [];
-
   if (scan.risk_flag === 'high') {
     actions.push({
       id: 'find-doctor',
@@ -205,22 +94,13 @@ export function fromMedicalScan(
       variant: 'default',
       payload: { days: 3 },
     });
-    
-    if (scan.risk_flag === 'medium') {
-      actions.push({
-        id: 'view-education',
-        label: 'Learn More',
-        intent: 'view_education',
-        variant: 'outline',
-      });
-    }
   }
 
   return {
     id: `medical-${Date.now()}`,
     agentType: 'medical',
     tone: 'clinical',
-    message: generateMedicalMessage(scan),
+    message: baseMessage, // Immediate feedback while agent thinks
     highlights: highlights.length > 0 ? highlights : undefined,
     actions,
     meta: {
@@ -253,28 +133,22 @@ export function fromEnvironmentalChange(
 
   const actions: AgentAction[] = [
     {
-      id: 'view-changes',
-      label: 'See What Changed',
+      id: 'view-routine',
+      label: 'View Updates',
       intent: 'apply_routine',
       variant: 'default',
-    },
-    {
-      id: 'dismiss',
-      label: 'Got It',
-      intent: 'dismiss',
-      variant: 'outline',
-    },
+    }
   ];
 
   return {
     id: `env-${Date.now()}`,
     agentType,
-    tone: agentType === 'cosmetic' ? 'friendly' : 'clinical',
+    tone: 'friendly',
     message,
     alerts: alerts.length > 0 ? alerts : undefined,
     actions,
     meta: {
-      severity: weather.isHighUV ? 'warning' : 'info',
+      severity: 'info',
       timestamp: new Date(),
       triggeredBy: 'environment',
     },
@@ -282,53 +156,140 @@ export function fromEnvironmentalChange(
 }
 
 /**
- * Convert onboarding completion to AgentResponse
+ * Convert cosmetic scan to AgentResponse
  */
-export function fromOnboardingComplete(user: UserProfile): AgentResponse {
-  const message = `Welcome aboard, ${user.name}! 🎉 I'm excited to be your skin health companion. I've set up a personalized routine based on your profile. Let's start your journey to healthier, happier skin!`;
-
-  const highlights = [
-    `Optimized for ${user.skinType} skin`,
-    `Melanin-safe recommendations for Fitzpatrick Type ${user.fitzpatrickScale}`,
-    `Focused on: ${user.concerns.map(c => c.replace('-', ' ')).join(', ')}`,
-  ];
+export function fromCosmeticScan(
+  scan: CosmeticScanResult,
+  user: UserProfile,
+  weather: WeatherState
+): AgentResponse {
+  // Generate initial message (simple fallback while agent processes)
+  const detected = scan.detected_conditions.map(c => c.replace(/_/g, ' '));
+  const detectedStr = detected.join(', ');
+  let baseMessage: string;
+  if (detectedStr) {
+    baseMessage = `I'm analyzing your scan results showing ${detectedStr}. Let me create a personalized routine for you.`;
+  } else {
+    baseMessage = `I'm analyzing your scan results. Let me create a personalized routine for you.`;
+  }
+  
+  const highlights: string[] = [];
+  if (detected.length > 0) {
+    highlights.push(`Detected: ${detectedStr}`);
+  }
 
   const actions: AgentAction[] = [
     {
-      id: 'start-scan',
-      label: 'Take Your First Scan',
-      intent: 'start_scan',
-      variant: 'default',
-    },
-    {
-      id: 'view-dashboard',
-      label: 'Explore Dashboard',
+      id: 'apply-routine',
+      label: 'View Routine',
       intent: 'apply_routine',
-      variant: 'outline',
-    },
+      variant: 'default',
+    }
   ];
 
+  // Optional predicted age from face-api.js injected by scan page
+  let predictedAge: number | undefined = undefined;
+  try {
+    if (typeof window !== 'undefined') {
+      const g: any = window as any;
+      if (typeof g.__faceAge === 'number') {
+        predictedAge = g.__faceAge;
+      }
+    }
+  } catch {}
+
+  // Fire-and-forget server execution via API so planner (Gemini) runs with server env
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  (async () => {
+    try {
+      let location: { lat: number; lon: number } | undefined = undefined;
+      if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+        try {
+          location = await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+              () => resolve(undefined),
+              { maximumAge: 60_000, timeout: 3_000 }
+            );
+          }) as any;
+        } catch {
+          location = undefined;
+        }
+      }
+      
+      const res = await fetch('/api/agents/cosmetic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          scan,
+          userProfile: user,
+          location,
+          predictedAge,
+          history: [], // Initial turn, no history
+          weather,
+        }),
+      });
+      if (res.ok) {
+        const out = await res.json();
+        
+        // Save agent message (question or final)
+        const { saveAgentMessage } = await import('@/lib/firebase/agent');
+        await saveAgentMessage(user.id, {
+          agentType: 'cosmetic',
+          tone: 'friendly',
+          message: out.message,
+          type: out.type || 'text',
+          options: out.options,
+          thoughtProcess: out.thoughtProcess,
+          meta: {
+            severity: 'info',
+            confidence: scan.confidence,
+            triggeredBy: 'scan',
+          },
+        } as any);
+        
+        // Save recommendation bundle (only if final)
+        if (out.type === 'final') {
+          const { saveRecommendationLog } = await import('@/lib/firebase/firestore');
+          await saveRecommendationLog(user.id, {
+            agentType: 'cosmetic',
+            recommendations: {
+              routine: out?.routine,
+              products: out?.topProducts,
+            },
+            scanResult: scan,
+            notes: out?.notes,
+            trace: out?.trace,
+            skinScore: out?.skinScore,
+          } as any);
+        }
+      }
+    } catch {
+      // ignore errors; message already rendered
+    }
+  })();
+
   return {
-    id: `onboarding-${Date.now()}`,
-    agentType: 'neutral',
+    id: `cosmetic-${Date.now()}`,
+    agentType: 'cosmetic',
     tone: 'friendly',
-    message,
-    highlights,
+    message: baseMessage,
+    highlights: highlights.length > 0 ? highlights : undefined,
+    alerts: undefined, // cosmetic alerts generated by server now
     actions,
     meta: {
-      severity: 'info',
+      severity: scan.severity_score > 0.7 ? 'warning' : 'info',
+      confidence: scan.confidence,
       timestamp: new Date(),
-      triggeredBy: 'onboarding',
+      triggeredBy: 'scan',
     },
   };
 }
 
+// Export AgentAdapter object for backward compatibility
 export const AgentAdapter = {
-  fromCosmeticScan,
   fromMedicalScan,
+  fromCosmeticScan,
   fromEnvironmentalChange,
-  fromOnboardingComplete,
 };
-
-export default AgentAdapter;
-

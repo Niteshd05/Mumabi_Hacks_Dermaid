@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   AlertTriangle, 
   CheckCircle2, 
@@ -9,6 +9,10 @@ import {
   TrendingUp,
   TrendingDown,
   Ban,
+  BrainCircuit,
+  Search,
+  HelpCircle,
+  Cloud,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,11 +26,61 @@ interface AgentMessageProps {
 }
 
 export function AgentMessage({ message, onAction }: AgentMessageProps) {
-  const character = AGENT_CHARACTERS[message.agentType];
+  const character = AGENT_CHARACTERS[message.agentType] ?? AGENT_CHARACTERS.neutral;
   const severityStyles = {
     info: 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30',
     warning: 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30',
     danger: 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30',
+  };
+
+  // Render Thinking Process
+  const renderThinking = () => {
+    if (!message.thoughtProcess || message.thoughtProcess.length === 0) return null;
+    
+    return (
+      <div className="space-y-2 mb-3 px-1">
+        {message.thoughtProcess.map((thought, i) => {
+          let Icon = BrainCircuit;
+          if (thought.toLowerCase().includes('weather') || thought.toLowerCase().includes('environment')) Icon = Cloud;
+          else if (thought.toLowerCase().includes('search')) Icon = Search;
+          else if (thought.toLowerCase().includes('ask')) Icon = HelpCircle;
+
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.3 }} // Staggered appearance for effect
+              className="flex items-center gap-2 text-xs text-muted-foreground italic"
+            >
+              <Icon className="w-3 h-3 shrink-0 animate-pulse" />
+              <span>{thought}</span>
+            </motion.div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Render Question Options (MCQ)
+  const renderOptions = () => {
+    if (message.type !== 'question' || !message.options) return null;
+
+    return (
+      <div className="flex flex-wrap gap-2 mt-3">
+        {message.options.map((option, i) => (
+          <Button
+            key={i}
+            variant="outline"
+            size="sm"
+            onClick={() => onAction?.(message.id, 'answer_question', { answer: option })}
+            className="bg-background hover:bg-secondary"
+          >
+            {option}
+          </Button>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -35,14 +89,19 @@ export function AgentMessage({ message, onAction }: AgentMessageProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       className="space-y-3"
     >
+      {/* Thinking Process (Visualized before the bubble) */}
+      {renderThinking()}
+
       {/* Message Bubble */}
       <div className="flex gap-3">
         {/* Avatar */}
         <div 
-          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
-          style={{ backgroundColor: character.color }}
+          className={cn(
+            "w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden text-lg",
+            character.bg
+          )}
         >
-          <img src="/avatar.png" alt="Agent" className="w-12 h-12 object-contain" />
+          {character.avatar}
         </div>
 
         {/* Message Content */}
@@ -56,7 +115,10 @@ export function AgentMessage({ message, onAction }: AgentMessageProps) {
                 : 'bg-muted/50 border-border'
             )}
           >
-            <p className="text-sm leading-relaxed">{message.message}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.message}</p>
+            
+            {/* Render Options if it's a question */}
+            {renderOptions()}
             
             {/* Confidence Badge */}
             {message.meta?.confidence && (
@@ -79,7 +141,7 @@ export function AgentMessage({ message, onAction }: AgentMessageProps) {
                   transition={{ delay: i * 0.1 }}
                   className="flex items-start gap-2 text-xs text-muted-foreground"
                 >
-                  <Sparkles className="w-3 h-3 shrink-0 mt-0.5" style={{ color: character.accentColor }} />
+                  <Sparkles className="w-3 h-3 shrink-0 mt-0.5 text-amber-500" />
                   <span>{highlight}</span>
                 </motion.div>
               ))}
@@ -107,8 +169,8 @@ export function AgentMessage({ message, onAction }: AgentMessageProps) {
                   <div className="space-y-1">
                     {message.routineDiff.added.map((rec) => (
                       <div key={rec.id} className="flex items-center gap-2 text-xs">
-                        <TrendingUp className="w-3 h-3 text-emerald-500" />
-                        <span className="font-medium">{rec.title}</span>
+                        <TrendingUp className="w-3 h-3 text-green-500" />
+                        <span className="text-green-700 dark:text-green-300">{rec.title}</span>
                       </div>
                     ))}
                   </div>
@@ -117,53 +179,16 @@ export function AgentMessage({ message, onAction }: AgentMessageProps) {
             </Card>
           )}
 
-          {/* Alerts */}
-          {message.alerts && message.alerts.length > 0 && (
-            <div className="space-y-2">
-              {message.alerts.map((alert) => (
-                <Card 
-                  key={alert.id}
-                  className={cn(
-                    'border',
-                    alert.severity === 'danger' && 'border-red-300 bg-red-50 dark:bg-red-950/30',
-                    alert.severity === 'warning' && 'border-amber-300 bg-amber-50 dark:bg-amber-950/30',
-                    alert.severity === 'info' && 'border-blue-300 bg-blue-50 dark:bg-blue-950/30'
-                  )}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className={cn(
-                        'w-4 h-4 shrink-0 mt-0.5',
-                        alert.severity === 'danger' && 'text-red-500',
-                        alert.severity === 'warning' && 'text-amber-500',
-                        alert.severity === 'info' && 'text-blue-500'
-                      )} />
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold">{alert.title}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{alert.actionRequired}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
           {/* Actions */}
           {message.actions && message.actions.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-1">
               {message.actions.map((action) => (
                 <Button
                   key={action.id}
+                  variant={action.variant || 'secondary'}
                   size="sm"
-                  variant={action.variant || 'outline'}
+                  className="text-xs h-8"
                   onClick={() => onAction?.(action.id, action.intent, action.payload)}
-                  className={cn(
-                    'text-xs',
-                    action.variant === 'default' && 'bg-gradient-to-r text-white',
-                    message.agentType === 'cosmetic' && action.variant === 'default' && 'from-orange-400 to-amber-500',
-                    message.agentType === 'medical' && action.variant === 'default' && 'from-teal-400 to-cyan-400'
-                  )}
                 >
                   {action.label}
                 </Button>
@@ -172,12 +197,6 @@ export function AgentMessage({ message, onAction }: AgentMessageProps) {
           )}
         </div>
       </div>
-
-      {/* Timestamp */}
-      <div className="text-[10px] text-muted-foreground text-right">
-        {message.timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-      </div>
     </motion.div>
   );
 }
-
