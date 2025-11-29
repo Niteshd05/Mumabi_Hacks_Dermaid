@@ -1,56 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/building-and-running/learn-nextjs).
+DermAid: Intelligent Skin Health Platform 🩺✨
+All models and frontend deployed and live on: https://derm-aid.vercel.app/
 
-## Getting Started
+🚀 The Concept
 
-First, run the development server:
+DermAid is the first Dual-Agent AI System designed to bridge the critical gap between daily cosmetic skincare and medical pre-diagnosis.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Most apps are either "Beauty Filters" (ignoring health) or "Symptom Checkers" (ignoring daily care). DermAid combines both into a single Agentic Ecosystem that doesn't just analyze your skin—it learns, adapts, and protects you over time.
 
-Open `http://localhost:3000` with your browser to see the app.
+🧠 How It Works (The Dual-Agent System)
 
-You can start editing the project by modifying files under `app/` and `lib/`.
+The platform runs two specialized AI Agents autonomously on your device:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load fonts.
+🧖‍♀️ The Cosmetic Agent (Face): Your daily aesthetician. It tracks acne, pigmentation, and aging signs, adapting your routine weekly based on your progress and skin tolerance.
 
-## Deploy on Vercel
+🩺 The Medical Agent (Body): Your health safety net. It continuously monitors for suspicious lesions (like Eczema, Psoriasis, or Melanoma risks) and provides intelligent triage—telling you when to self-treat and when to see a doctor immediately.
 
-The easiest way to deploy this app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=nextjs-repo).
+✨ Key Features
 
-## Environment & Integrations
+Agentic Adaptation: Unlike static apps, DermAid's AI autonomously modifies your routine based on external factors (Weather/UV Index) and internal feedback (Skin sensitivity).
 
-Create a `.env.local` file with:
+True Inclusivity: Built with specialized logic for Fitzpatrick Skin Types IV-VI, accurately detecting conditions and preventing PIH (dark spots) on darker skin tones where other AIs fail.
 
-```bash
-# Required for Gemini 2.0 Flash agentic planning
-GOOGLE_API_KEY=your_google_generative_ai_key_here
+Medical Safety Net: A "Handshake Protocol" allows the Cosmetic Agent to instantly trigger the Medical Agent if it detects a health anomaly during a routine beauty scan.
 
-# Local dev base URL (optional)
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+Privacy First: All analysis happens client-side. Your face data never leaves your device.
 
-# Amazon SearchAPI key (for product links)
-SEARCHAPI_KEY=your_searchapi_key_here
-```
+💡 Why It Matters
 
-**Weather/UV**
+We are solving the "Triage Gap" in dermatology. By distinguishing between cosmetic concerns and medical emergencies, DermAid prevents unnecessary doctor visits for minor issues while ensuring serious conditions are caught early—saving money, time, and potentially lives.
 
-- Uses [Open‑Meteo](https://open-meteo.com/) (no API key required). No extra setup needed.
-
-**Face Age (optional)**
-
-- We use [`@vladmandic/face-api`](https://github.com/vladmandic/face-api) for age estimation during cosmetic scans.
-- At runtime the app tries to load models from `/public/models` and falls back to a CDN.
-- To bundle models locally (recommended for offline): copy all files from `node_modules/@vladmandic/face-api/model/` into `public/models/` so that files like `public/models/tiny_face_detector_model-weights_manifest.json` and `public/models/age_gender_model-weights_manifest.json` exist.
-
-**Product Links via SearchAPI (optional)**
-
-- The dashboard calls `/api/links` which proxies to `https://www.searchapi.io` to fetch Amazon product URLs based on recommended ingredients.
-- Set `SEARCHAPI_KEY` in `.env.local` to enable this feature.
-
+Built for the Mumbai Hacks Healthtech Track.
